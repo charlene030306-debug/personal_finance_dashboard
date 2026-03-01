@@ -13,33 +13,49 @@ document.addEventListener("DOMContentLoaded", function () {
         trendExpenseValues,
     } = window.dashboardData;
 
+    Chart.defaults.font.family = "Manrope, system-ui, -apple-system, sans-serif";
+    Chart.defaults.color = "#475569";
+
+    const commonAnimation = {
+        duration: 900,
+        easing: "easeOutQuart",
+    };
+
     const pieCanvas = document.getElementById("pieChart");
     if (pieCanvas && categoryLabels.length > 0) {
         new Chart(pieCanvas, {
-            type: "pie",
+            type: "doughnut",
             data: {
                 labels: categoryLabels,
                 datasets: [
                     {
                         data: categoryValues,
                         backgroundColor: [
-                            "#0d6efd",
-                            "#dc3545",
-                            "#198754",
-                            "#fd7e14",
-                            "#6f42c1",
-                            "#20c997",
-                            "#ffc107",
-                            "#6c757d",
+                            "#3b82f6",
+                            "#ef4444",
+                            "#10b981",
+                            "#f59e0b",
+                            "#6366f1",
+                            "#06b6d4",
+                            "#8b5cf6",
+                            "#14b8a6",
                         ],
+                        borderWidth: 0,
+                        hoverOffset: 8,
                     },
                 ],
             },
             options: {
-                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "62%",
+                animation: commonAnimation,
                 plugins: {
                     legend: {
                         position: "bottom",
+                        labels: {
+                            usePointStyle: true,
+                            padding: 16,
+                        },
                     },
                 },
             },
@@ -56,21 +72,31 @@ document.addEventListener("DOMContentLoaded", function () {
                     {
                         label: "Amount",
                         data: [income, expense],
-                        backgroundColor: ["#198754", "#dc3545"],
-                        borderRadius: 6,
+                        backgroundColor: ["#12b76a", "#ef4444"],
+                        borderRadius: 10,
+                        maxBarThickness: 60,
                     },
                 ],
             },
             options: {
-                responsive: true,
+                maintainAspectRatio: false,
+                animation: commonAnimation,
                 plugins: {
                     legend: {
                         display: false,
                     },
                 },
                 scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                        },
+                    },
                     y: {
                         beginAtZero: true,
+                        grid: {
+                            color: "rgba(148, 163, 184, 0.2)",
+                        },
                     },
                 },
             },
@@ -87,31 +113,48 @@ document.addEventListener("DOMContentLoaded", function () {
                     {
                         label: "Income",
                         data: trendIncomeValues,
-                        borderColor: "#198754",
-                        backgroundColor: "rgba(25, 135, 84, 0.18)",
-                        fill: false,
-                        tension: 0.3,
+                        borderColor: "#16a34a",
+                        backgroundColor: "rgba(22, 163, 74, 0.14)",
+                        fill: true,
+                        tension: 0.34,
+                        pointRadius: 3.5,
+                        pointHoverRadius: 5,
                     },
                     {
                         label: "Expense",
                         data: trendExpenseValues,
-                        borderColor: "#dc3545",
-                        backgroundColor: "rgba(220, 53, 69, 0.18)",
-                        fill: false,
-                        tension: 0.3,
+                        borderColor: "#dc2626",
+                        backgroundColor: "rgba(220, 38, 38, 0.12)",
+                        fill: true,
+                        tension: 0.34,
+                        pointRadius: 3.5,
+                        pointHoverRadius: 5,
                     },
                 ],
             },
             options: {
-                responsive: true,
+                maintainAspectRatio: false,
+                animation: commonAnimation,
                 plugins: {
                     legend: {
                         position: "bottom",
+                        labels: {
+                            usePointStyle: true,
+                            padding: 16,
+                        },
                     },
                 },
                 scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                        },
+                    },
                     y: {
                         beginAtZero: true,
+                        grid: {
+                            color: "rgba(148, 163, 184, 0.2)",
+                        },
                     },
                 },
             },

@@ -10,6 +10,8 @@ if (!isset($_SESSION["user_id"])) {
     exit();
 }
 
+$page_title = "Dashboard";
+
 $user_id = (int) $_SESSION["user_id"];
 $selected_month = date("Y-m");
 if (isset($_GET["month"]) && preg_match("/^\d{4}-\d{2}$/", $_GET["month"])) {
@@ -19,7 +21,6 @@ if (isset($_GET["month"]) && preg_match("/^\d{4}-\d{2}$/", $_GET["month"])) {
 $month_start = $selected_month . "-01";
 $month_end = date("Y-m-t", strtotime($month_start));
 
-/* TOTAL INCOME */
 $stmt = mysqli_prepare(
     $conn,
     "SELECT COALESCE(SUM(amount), 0)
@@ -32,7 +33,6 @@ mysqli_stmt_bind_result($stmt, $total_income);
 mysqli_stmt_fetch($stmt);
 mysqli_stmt_close($stmt);
 
-/* TOTAL EXPENSE */
 $stmt = mysqli_prepare(
     $conn,
     "SELECT COALESCE(SUM(amount), 0)
@@ -47,7 +47,6 @@ mysqli_stmt_close($stmt);
 
 $remaining_balance = $total_income - $total_expense;
 
-/* EXPENSE CATEGORY BREAKDOWN */
 $category_data = [];
 $stmt = mysqli_prepare(
     $conn,
@@ -65,7 +64,6 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 mysqli_stmt_close($stmt);
 
-/* MONTHLY TREND (LAST 6 MONTHS INCLUDING SELECTED) */
 $trend_labels = [];
 $trend_income_map = [];
 $trend_expense_map = [];
@@ -120,7 +118,6 @@ mysqli_stmt_close($stmt);
 $trend_income_values = array_values($trend_income_map);
 $trend_expense_values = array_values($trend_expense_map);
 
-/* BUDGET OVERVIEW */
 $budget_rows = [];
 $budget_total = 0.0;
 $budget_spent_total = 0.0;
@@ -162,10 +159,8 @@ while ($row = mysqli_fetch_assoc($result)) {
     $budget_spent_total += $spent_amount;
 }
 mysqli_stmt_close($stmt);
-
 $budget_remaining_total = $budget_total - $budget_spent_total;
 
-/* RECENT TRANSACTIONS */
 $recent_transactions = [];
 $stmt = mysqli_prepare(
     $conn,
@@ -202,173 +197,141 @@ mysqli_stmt_close($stmt);
 include "includes/header.php";
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Dashboard</h3>
-    <div class="d-flex gap-2">
-        <a href="income/add_income.php" class="btn btn-success btn-sm">Add Income</a>
-        <a href="expense/add_expense.php" class="btn btn-danger btn-sm">Add Expense</a>
-        <a href="budget/add_budget.php" class="btn btn-primary btn-sm">Manage Budgets</a>
-        <a href="reports/reports.php?month=<?php echo htmlspecialchars($selected_month); ?>" class="btn btn-secondary btn-sm">Reports</a>
-    </div>
-</div>
-
-<form method="GET" class="mb-4">
-    <div class="row g-2">
-        <div class="col-md-4">
-            <input type="month" name="month" class="form-control" value="<?php echo htmlspecialchars($selected_month); ?>">
-        </div>
-        <div class="col-md-2">
-            <button class="btn btn-primary w-100">Filter</button>
-        </div>
-    </div>
+<form method="GET" class="month-filter-form mb-3">
+    <input type="month" name="month" class="form-control" value="<?php echo htmlspecialchars($selected_month); ?>">
+    <button class="btn btn-primary filter-btn" type="submit">Filter</button>
 </form>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card text-white bg-success shadow-sm h-100">
-            <div class="card-body">
-                <h6 class="card-title mb-2">Total Income</h6>
-                <h4 class="mb-0">Rs <?php echo number_format($total_income, 2); ?></h4>
-            </div>
+<section class="stats-grid">
+    <article class="stat-card income">
+        <div>
+            <p class="stat-title">Total Income</p>
+            <h3 class="stat-value">Rs <?php echo number_format($total_income, 2); ?></h3>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-danger shadow-sm h-100">
-            <div class="card-body">
-                <h6 class="card-title mb-2">Total Expense</h6>
-                <h4 class="mb-0">Rs <?php echo number_format($total_expense, 2); ?></h4>
-            </div>
+        <span class="stat-icon"><i class="fa-solid fa-circle-arrow-up"></i></span>
+    </article>
+    <article class="stat-card expense">
+        <div>
+            <p class="stat-title">Total Expense</p>
+            <h3 class="stat-value">Rs <?php echo number_format($total_expense, 2); ?></h3>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-white <?php echo $remaining_balance < 0 ? "bg-danger" : "bg-primary"; ?> shadow-sm h-100">
-            <div class="card-body">
-                <h6 class="card-title mb-2">Remaining Balance</h6>
-                <h4 class="mb-0">Rs <?php echo number_format($remaining_balance, 2); ?></h4>
-            </div>
+        <span class="stat-icon"><i class="fa-solid fa-circle-arrow-down"></i></span>
+    </article>
+    <article class="stat-card balance">
+        <div>
+            <p class="stat-title">Remaining Balance</p>
+            <h3 class="stat-value">Rs <?php echo number_format($remaining_balance, 2); ?></h3>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-white <?php echo $budget_remaining_total < 0 ? "bg-warning" : "bg-info"; ?> shadow-sm h-100">
-            <div class="card-body">
-                <h6 class="card-title mb-2">Budget Remaining</h6>
-                <h4 class="mb-0">Rs <?php echo number_format($budget_remaining_total, 2); ?></h4>
-            </div>
+        <span class="stat-icon"><i class="fa-solid fa-sack-dollar"></i></span>
+    </article>
+    <article class="stat-card budget">
+        <div>
+            <p class="stat-title">Budget Remaining</p>
+            <h3 class="stat-value">Rs <?php echo number_format($budget_remaining_total, 2); ?></h3>
         </div>
-    </div>
-</div>
+        <span class="stat-icon"><i class="fa-solid fa-shield-heart"></i></span>
+    </article>
+</section>
 
-<div class="row g-3 mb-4">
-    <div class="col-lg-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <h5 class="card-title">Expense Categories</h5>
-                <?php if (empty($category_data)): ?>
-                    <p class="text-muted mb-0">No expenses in this month.</p>
-                <?php else: ?>
-                    <canvas id="pieChart" height="220"></canvas>
-                <?php endif; ?>
-            </div>
+<section class="charts-grid">
+    <article class="dashboard-card">
+        <div class="card-heading"><h5>Expense Categories</h5></div>
+        <div class="chart-wrap">
+            <?php if (empty($category_data)): ?>
+                <p class="empty-state">No expenses in this month.</p>
+            <?php else: ?>
+                <canvas id="pieChart"></canvas>
+            <?php endif; ?>
         </div>
-    </div>
-    <div class="col-lg-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <h5 class="card-title">Income vs Expense</h5>
-                <canvas id="barChart" height="220"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <h5 class="card-title">6-Month Trend</h5>
-                <canvas id="lineChart" height="220"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
+    </article>
+    <article class="dashboard-card">
+        <div class="card-heading"><h5>Income vs Expense</h5></div>
+        <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+    </article>
+    <article class="dashboard-card chart-wide">
+        <div class="card-heading"><h5>6-Month Trend</h5></div>
+        <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
+    </article>
+</section>
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Budget Overview</h5>
-            <small class="text-muted">
-                Budget: Rs <?php echo number_format($budget_total, 2); ?> |
-                Spent: Rs <?php echo number_format($budget_spent_total, 2); ?>
-            </small>
-        </div>
-
+<section class="dashboard-card budget-card">
+    <div class="card-heading">
+        <h5>Budget Overview</h5>
+        <span class="heading-meta">Budget Rs <?php echo number_format($budget_total, 2); ?> | Spent Rs <?php echo number_format($budget_spent_total, 2); ?></span>
+    </div>
+    <div class="budget-list">
         <?php if (empty($budget_rows)): ?>
-            <p class="text-muted mb-0">No budgets found for <?php echo htmlspecialchars($selected_month); ?>.</p>
+            <p class="empty-state mb-0">No budgets found for <?php echo htmlspecialchars($selected_month); ?>.</p>
         <?php else: ?>
             <?php foreach ($budget_rows as $budget): ?>
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
+                <div class="budget-item">
+                    <div class="budget-item-head">
                         <strong><?php echo htmlspecialchars($budget["category"]); ?></strong>
                         <small>
-                            Rs <?php echo number_format($budget["spent"], 2); ?>
-                            / Rs <?php echo number_format($budget["budget"], 2); ?>
-                            (Remaining: Rs <?php echo number_format($budget["remaining"], 2); ?>)
+                            Rs <?php echo number_format($budget["spent"], 2); ?> / Rs <?php echo number_format($budget["budget"], 2); ?>
+                            (<?php echo round($budget["usage"]); ?>%)
                         </small>
                     </div>
-                    <div class="progress">
-                        <div
-                            class="progress-bar <?php echo $budget["is_exceeded"] ? "bg-danger" : "bg-success"; ?>"
-                            role="progressbar"
-                            style="width: <?php echo round($budget["usage"], 2); ?>%"
-                        >
-                            <?php echo round($budget["usage"]); ?>%
+                    <div class="progress finance-progress">
+                        <div class="progress-bar <?php echo $budget["is_exceeded"] ? "bg-danger" : "bg-success"; ?>"
+                             role="progressbar"
+                             style="width: <?php echo round($budget["usage"], 2); ?>%">
                         </div>
                     </div>
                     <?php if ($budget["is_exceeded"]): ?>
-                        <div class="text-danger small mt-1">Warning: Budget exceeded in this category.</div>
+                        <p class="warning-text"><i class="fa-solid fa-triangle-exclamation"></i> Budget exceeded</p>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
-</div>
+</section>
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
-        <h5 class="mb-3">Recent Transactions</h5>
-        <?php if (empty($recent_transactions)): ?>
-            <p class="text-muted mb-0">No transactions yet.</p>
-        <?php else: ?>
-            <div class="table-responsive">
-                <table class="table table-striped align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Type</th>
-                            <th>Date</th>
-                            <th>Source</th>
-                            <th>Category</th>
-                            <th>Notes</th>
-                            <th class="text-end">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($recent_transactions as $txn): ?>
-                            <tr>
-                                <td>
-                                    <span class="badge <?php echo $txn["txn_type"] === "Income" ? "bg-success" : "bg-danger"; ?>">
-                                        <?php echo htmlspecialchars($txn["txn_type"]); ?>
-                                    </span>
-                                </td>
-                                <td><?php echo htmlspecialchars($txn["txn_date"]); ?></td>
-                                <td><?php echo htmlspecialchars($txn["source"] ?: "-"); ?></td>
-                                <td><?php echo htmlspecialchars($txn["category"]); ?></td>
-                                <td><?php echo htmlspecialchars($txn["notes"] ?: "-"); ?></td>
-                                <td class="text-end">Rs <?php echo number_format((float) $txn["amount"], 2); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
+<section class="dashboard-card table-card">
+    <div class="card-heading">
+        <h5>Recent Transactions</h5>
+        <div class="quick-links">
+            <a href="income/index.php" class="btn btn-sm btn-outline-success">Add Income</a>
+            <a href="expense/add_expense.php" class="btn btn-sm btn-outline-danger">Add Expense</a>
+        </div>
     </div>
-</div>
+    <div class="table-responsive">
+        <table class="table finance-table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Source</th>
+                    <th>Category</th>
+                    <th>Notes</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($recent_transactions)): ?>
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No transactions yet.</td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($recent_transactions as $txn): ?>
+                        <tr>
+                            <td>
+                                <span class="badge-type <?php echo $txn["txn_type"] === "Income" ? "income-badge" : "expense-badge"; ?>">
+                                    <?php echo htmlspecialchars($txn["txn_type"]); ?>
+                                </span>
+                            </td>
+                            <td><?php echo htmlspecialchars($txn["txn_date"]); ?></td>
+                            <td><?php echo htmlspecialchars($txn["source"] ?: "-"); ?></td>
+                            <td><?php echo htmlspecialchars($txn["category"]); ?></td>
+                            <td><?php echo htmlspecialchars($txn["notes"] ?: "-"); ?></td>
+                            <td class="text-end fw-semibold">Rs <?php echo number_format((float) $txn["amount"], 2); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</section>
 
 <script>
     window.dashboardData = {
@@ -381,7 +344,6 @@ include "includes/header.php";
         trendExpenseValues: <?php echo json_encode($trend_expense_values); ?>
     };
 </script>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="assets/js/charts.js"></script>
 

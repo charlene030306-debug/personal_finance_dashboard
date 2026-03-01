@@ -152,6 +152,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 mysqli_stmt_close($stmt);
 $budget_remaining_total = $budget_total - $budget_spent_total;
+$budget_used_percentage = $budget_total > 0 ? min(($budget_spent_total / $budget_total) * 100, 100) : 0;
 
 $recent_transactions = [];
 $stmt = mysqli_prepare(
@@ -244,6 +245,13 @@ include "includes/header.php";
         <div class="card-heading"><h5>6-Month Trend</h5></div>
         <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
     </article>
+    <article class="dashboard-card">
+        <div class="card-heading">
+            <h5>Budget Summary</h5>
+            <span class="heading-meta"><?php echo round($budget_used_percentage); ?>% used</span>
+        </div>
+        <div class="chart-wrap"><canvas id="budgetSummaryChart"></canvas></div>
+    </article>
 </section>
 
 <section class="dashboard-card budget-card">
@@ -333,7 +341,10 @@ include "includes/header.php";
         categoryValues: <?php echo json_encode(array_values($category_data)); ?>,
         trendLabels: <?php echo json_encode($trend_labels); ?>,
         trendIncomeValues: <?php echo json_encode($trend_income_values); ?>,
-        trendExpenseValues: <?php echo json_encode($trend_expense_values); ?>
+        trendExpenseValues: <?php echo json_encode($trend_expense_values); ?>,
+        budgetTotal: <?php echo json_encode((float) $budget_total); ?>,
+        budgetSpent: <?php echo json_encode((float) $budget_spent_total); ?>,
+        budgetRemaining: <?php echo json_encode((float) max(0, $budget_remaining_total)); ?>
     };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

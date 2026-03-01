@@ -11,6 +11,9 @@ document.addEventListener("DOMContentLoaded", function () {
         trendLabels,
         trendIncomeValues,
         trendExpenseValues,
+        budgetTotal,
+        budgetSpent,
+        budgetRemaining,
     } = window.dashboardData;
 
     Chart.defaults.font.family = "Manrope, system-ui, -apple-system, sans-serif";
@@ -154,6 +157,45 @@ document.addEventListener("DOMContentLoaded", function () {
                         beginAtZero: true,
                         grid: {
                             color: "rgba(148, 163, 184, 0.2)",
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    const budgetSummaryCanvas = document.getElementById("budgetSummaryChart");
+    if (budgetSummaryCanvas) {
+        new Chart(budgetSummaryCanvas, {
+            type: "doughnut",
+            data: {
+                labels: ["Spent", "Remaining"],
+                datasets: [
+                    {
+                        data: [budgetSpent, budgetRemaining],
+                        backgroundColor: ["#ef4444", "#10b981"],
+                        borderWidth: 0,
+                        hoverOffset: 8,
+                    },
+                ],
+            },
+            options: {
+                maintainAspectRatio: false,
+                cutout: "65%",
+                animation: commonAnimation,
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: {
+                            usePointStyle: true,
+                            padding: 16,
+                        },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                return `${ctx.label}: Rs ${Number(ctx.raw || 0).toFixed(2)}`;
+                            },
                         },
                     },
                 },

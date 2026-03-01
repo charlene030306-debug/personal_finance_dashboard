@@ -1,14 +1,6 @@
 <?php
 require_once "config/db.php";
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-if (!isset($_SESSION["user_id"])) {
-    header("Location: auth/login.php");
-    exit();
-}
+require_once "includes/auth_check.php";
 
 $page_title = "Dashboard";
 

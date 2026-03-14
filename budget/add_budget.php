@@ -7,8 +7,9 @@ $page_title = "Budget Tracking";
 $budget_categories = ["Food", "Transport", "Rent", "Utilities", "Shopping", "Health", "Entertainment", "Education", "Other"];
 
 $user_id = (int) $_SESSION["user_id"];
+$filter_type = $_GET["filter_type"] ?? "all";
 $selected_month = date("Y-m");
-if (isset($_GET["month"]) && preg_match("/^\d{4}-\d{2}$/", $_GET["month"])) {
+if ($filter_type === "month" && isset($_GET["month"]) && preg_match("/^\d{4}-\d{2}$/", $_GET["month"])) {
     $selected_month = $_GET["month"];
 }
 
@@ -39,7 +40,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             mysqli_stmt_close($stmt);
             $selected_month = $delete_month;
             $form_month = $selected_month;
-            $success = "Budget deleted successfully.";
+            header("Location: add_budget.php?month=" . urlencode($delete_month) . "&deleted=1");
+            exit();
         }
     } else {
         $category = trim($_POST["category"] ?? "");
@@ -69,13 +71,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             mysqli_stmt_execute($stmt);
             mysqli_stmt_close($stmt);
 
-            $success = "Budget saved successfully.";
-            $selected_month = $month;
-            $form_month = $selected_month;
-            $form_category = "";
-            $form_amount = "";
+            header("Location: add_budget.php?month=" . urlencode($month) . "&success=1");
+            exit();
         }
     }
+}
+
+if (isset($_GET["success"]) && $_GET["success"] === "1") {
+    $success = "Budget saved successfully.";
+}
+
+if (isset($_GET["deleted"]) && $_GET["deleted"] === "1") {
+    $success = "Budget deleted successfully.";
 }
 
 if (isset($_GET["edit_category"]) && isset($_GET["edit_amount"])) {
@@ -88,22 +95,43 @@ if (isset($_GET["edit_category"]) && isset($_GET["edit_amount"])) {
     }
 }
 
-$stmt = mysqli_prepare(
-    $conn,
-    "SELECT b.category,
-            b.amount AS budget_amount,
-            COALESCE(e.spent_amount, 0) AS spent_amount
-     FROM budgets b
-     LEFT JOIN (
-         SELECT category, SUM(amount) AS spent_amount
-         FROM expenses
-         WHERE user_id = ? AND DATE_FORMAT(expense_date, '%Y-%m') = ?
-         GROUP BY category
-     ) e ON e.category = b.category
-     WHERE b.user_id = ? AND b.month = ?
-     ORDER BY b.category"
-);
-mysqli_stmt_bind_param($stmt, "isis", $user_id, $selected_month, $user_id, $selected_month);
+$stmt = null;
+if ($filter_type === "month") {
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT b.category,
+                b.amount AS budget_amount,
+                COALESCE(e.spent_amount, 0) AS spent_amount
+         FROM budgets b
+         LEFT JOIN (
+             SELECT category, SUM(amount) AS spent_amount
+             FROM expenses
+             WHERE user_id = ? AND DATE_FORMAT(expense_date, '%Y-%m') = ?
+             GROUP BY category
+         ) e ON e.category = b.category
+         WHERE b.user_id = ? AND b.month = ?
+         ORDER BY b.category"
+    );
+    mysqli_stmt_bind_param($stmt, "isis", $user_id, $selected_month, $user_id, $selected_month);
+} else {
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT b.category,
+                SUM(b.amount) AS budget_amount,
+                COALESCE(e.spent_amount, 0) AS spent_amount
+         FROM budgets b
+         LEFT JOIN (
+             SELECT category, SUM(amount) AS spent_amount
+             FROM expenses
+             WHERE user_id = ?
+             GROUP BY category
+         ) e ON e.category = b.category
+         WHERE b.user_id = ?
+         GROUP BY b.category
+         ORDER BY b.category"
+    );
+    mysqli_stmt_bind_param($stmt, "ii", $user_id, $user_id);
+}
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 
@@ -115,7 +143,8 @@ while ($row = mysqli_fetch_assoc($result)) {
     $budget_amount = (float) $row["budget_amount"];
     $spent_amount = (float) $row["spent_amount"];
     $remaining_amount = $budget_amount - $spent_amount;
-    $percentage = $budget_amount > 0 ? (($spent_amount / $budget_amount) * 100) : 0;
+    $raw_percentage = $budget_amount > 0 ? (($spent_amount / $budget_amount) * 100) : 0;
+    $percentage = min(max($raw_percentage, 0), 100);
     $is_exceeded = $spent_amount > $budget_amount;
 
     $budget_rows[] = [
@@ -123,7 +152,8 @@ while ($row = mysqli_fetch_assoc($result)) {
         "budget_amount" => $budget_amount,
         "spent_amount" => $spent_amount,
         "remaining_amount" => $remaining_amount,
-        "percentage" => min($percentage, 100),
+        "percentage" => $percentage,
+        "raw_percentage" => $raw_percentage,
         "is_exceeded" => $is_exceeded
     ];
 
@@ -138,15 +168,26 @@ $used_percentage = $total_budget > 0 ? min(($total_spent / $total_budget) * 100,
 include "../includes/header.php";
 ?>
 
+<div class="budget-page">
+
 <?php foreach ($errors as $error): ?>
     <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
 <?php endforeach; ?>
 
 <?php if ($success !== ""): ?>
     <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
+    <?php if (isset($_GET["success"]) && $_GET["success"] === "1"): ?>
+        <script>
+            if (window.location.search.includes("success=1")) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete("success");
+                window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ""));
+            }
+        </script>
+    <?php endif; ?>
 <?php endif; ?>
 
-<section class="stats-grid">
+<section class="stats-grid dashboard-card-grid">
     <article class="stat-card budget">
         <div>
             <p class="stat-title">Total Budget</p>
@@ -177,10 +218,23 @@ include "../includes/header.php";
     </article>
 </section>
 
-<form method="GET" class="month-filter-form mb-3">
-    <input type="month" name="month" class="form-control" value="<?php echo htmlspecialchars($selected_month); ?>">
-    <button class="btn btn-primary filter-btn" type="submit">Filter</button>
+<form method="GET" class="month-filter-form dashboard-filter mb-3">
+    <select name="filter_type" id="budgetFilterType" class="form-select">
+        <option value="all" <?php echo $filter_type === "all" ? "selected" : ""; ?>>All Time</option>
+        <option value="month" <?php echo $filter_type === "month" ? "selected" : ""; ?>>Specific Month</option>
+    </select>
+    <input type="month" name="month" id="budgetMonthFilter" class="form-control" value="<?php echo htmlspecialchars($selected_month); ?>">
+    <button class="btn btn-primary filter-btn btn-filter" type="submit">Filter</button>
 </form>
+<script>
+    const budgetFilterType = document.getElementById("budgetFilterType");
+    const budgetMonthFilter = document.getElementById("budgetMonthFilter");
+    function toggleBudgetMonth() {
+        budgetMonthFilter.style.display = budgetFilterType.value === "month" ? "block" : "none";
+    }
+    budgetFilterType.addEventListener("change", toggleBudgetMonth);
+    toggleBudgetMonth();
+</script>
 
 <section class="dashboard-card mb-3">
     <div class="card-heading">
@@ -215,7 +269,7 @@ include "../includes/header.php";
 <section class="dashboard-card">
     <div class="card-heading">
         <h5>Category Budget Tracking</h5>
-        <span class="heading-meta"><?php echo htmlspecialchars($selected_month); ?></span>
+        <span class="heading-meta"><?php echo $filter_type === "month" ? htmlspecialchars($selected_month) : "All time"; ?></span>
     </div>
 
     <?php if (empty($budget_rows)): ?>
@@ -234,20 +288,39 @@ include "../includes/header.php";
                         </small>
                     </div>
 
-                    <div class="progress finance-progress">
-                        <div
-                            class="progress-bar <?php echo $item["is_exceeded"] ? "bg-danger" : "bg-success"; ?>"
-                            role="progressbar"
-                            style="width: <?php echo round($item["percentage"], 2); ?>%"
-                        ></div>
+                    <?php
+                            $percentage_used = round($item["percentage"], 2);
+                            $raw_percentage = round($item["raw_percentage"], 2);
+                            if ($percentage_used < 70) {
+                                $progress_class = "progress-green";
+                                $status_class = "safe";
+                                $status_label = "Safe";
+                                $warning_text = "";
+                            } elseif ($percentage_used <= 90) {
+                                $progress_class = "progress-yellow";
+                                $status_class = "warning";
+                                $status_label = "Warning";
+                                $warning_text = "You are approaching your budget limit.";
+                            } else {
+                                $progress_class = "progress-red";
+                                $status_class = "critical";
+                                $status_label = "Critical";
+                                $warning_text = $raw_percentage > 100 ? "Budget exceeded." : "Budget almost exceeded.";
+                            }
+                        ?>
+                    <div class="budget-progress progress">
+                        <div class="progress-bar <?php echo $progress_class; ?>" role="progressbar" style="width: <?php echo $percentage_used; ?>%"></div>
                     </div>
 
-                    <?php if ($item["is_exceeded"]): ?>
-                        <p class="warning-text">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                            Warning: You exceeded this category budget.
-                        </p>
-                    <?php endif; ?>
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                        <span class="budget-status <?php echo $status_class; ?>">
+                            <i class="fa-solid fa-circle"></i>
+                            <?php echo $status_label; ?>
+                        </span>
+                        <?php if ($warning_text !== ""): ?>
+                            <span class="budget-warning-text"><?php echo htmlspecialchars($warning_text); ?></span>
+                        <?php endif; ?>
+                    </div>
 
                     <div class="d-flex gap-2 mt-2">
                         <a
@@ -268,5 +341,7 @@ include "../includes/header.php";
         </div>
     <?php endif; ?>
 </section>
+
+</div>
 
 <?php include "../includes/footer.php"; ?>

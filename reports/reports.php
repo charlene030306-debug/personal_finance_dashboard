@@ -33,8 +33,10 @@ sort($categories, SORT_NATURAL | SORT_FLAG_CASE);
 include "../includes/header.php";
 ?>
 
+<div class="reports-page reports-container">
+
 <!-- Summary Cards -->
-<section class="stats-grid reports-summary">
+<section class="stats-grid reports-summary dashboard-card-grid">
     <div class="stat-card income">
         <div>
             <p class="stat-title">Total Income</p>
@@ -68,10 +70,11 @@ include "../includes/header.php";
         <span class="heading-meta">Customize time range and focus</span>
     </div>
 
-    <form id="reportFilters" class="reports-filter-grid" method="GET">
+    <form id="reportFilters" class="reports-filter-grid reports-filter-bar" method="GET">
         <div>
             <label class="form-label">Report Type</label>
             <select name="report_type" class="form-select">
+                <option value="all" <?php echo $filters["report_type"] === "all" ? "selected" : ""; ?>>All Time</option>
                 <option value="daily" <?php echo $filters["report_type"] === "daily" ? "selected" : ""; ?>>Daily</option>
                 <option value="weekly" <?php echo $filters["report_type"] === "weekly" ? "selected" : ""; ?>>Weekly</option>
                 <option value="monthly" <?php echo $filters["report_type"] === "monthly" ? "selected" : ""; ?>>Monthly</option>
@@ -123,7 +126,7 @@ include "../includes/header.php";
         </div>
     </div>
     <div class="table-responsive">
-        <table class="table finance-table align-middle mb-0" id="transactionsTable">
+        <table class="table finance-table dashboard-table align-middle mb-0" id="transactionsTable">
             <thead>
                 <tr>
                     <th>Type</th>
@@ -233,13 +236,14 @@ function renderTransactions(rows) {
     rows.forEach(row => {
         const badgeClass = row.type === "Income" ? "income-badge" : "expense-badge";
         const notes = row.notes && row.notes.trim() ? row.notes : "-";
+        const amountClass = row.type === "Income" ? "amount-income" : "amount-expense";
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td><span class="badge-type ${badgeClass}">${row.type}</span></td>
             <td>${row.date}</td>
             <td>${row.category}</td>
             <td>${notes}</td>
-            <td class="text-end">${currencyFormatter.format(row.amount)}</td>
+            <td class="amount-column ${amountClass}">${currencyFormatter.format(row.amount)}</td>
         `;
         transactionsBody.appendChild(tr);
     });
@@ -362,5 +366,7 @@ reportFilters.addEventListener("change", () => {
 
 loadReportData();
 </script>
+
+</div>
 
 <?php include "../includes/footer.php"; ?>

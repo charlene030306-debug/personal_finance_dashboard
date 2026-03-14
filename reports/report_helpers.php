@@ -21,7 +21,7 @@ function report_validate_date(?string $value): ?string
 
 function report_parse_filters(array $input): array
 {
-    $allowed_types = ["daily", "weekly", "monthly", "custom"];
+    $allowed_types = ["daily", "weekly", "monthly", "custom", "all"];
     $allowed_txn_types = ["all", "income", "expense"];
 
     $report_type = $input["report_type"] ?? "monthly";
@@ -44,7 +44,10 @@ function report_parse_filters(array $input): array
 
     $today = new DateTime("today");
 
-    if ($report_type === "daily") {
+    if ($report_type === "all") {
+        $start_date = "1970-01-01";
+        $end_date = $today->format("Y-m-d");
+    } elseif ($report_type === "daily") {
         $base = $start_input ? new DateTime($start_input) : clone $today;
         $start_date = $base->format("Y-m-d");
         $end_date = $base->format("Y-m-d");

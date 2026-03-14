@@ -69,7 +69,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 include "../includes/header.php";
 ?>
 
-<div class="card shadow-sm">
+<div class="card dashboard-card shadow-sm">
     <div class="card-body">
         <h5 class="mb-3">Edit Income</h5>
 

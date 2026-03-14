@@ -5,33 +5,56 @@ require_once "includes/auth_check.php";
 $page_title = "Dashboard";
 
 $user_id = (int) $_SESSION["user_id"];
+$filter_type = $_GET["filter_type"] ?? "all";
 $selected_month = date("Y-m");
-if (isset($_GET["month"]) && preg_match("/^\d{4}-\d{2}$/", $_GET["month"])) {
+if ($filter_type === "month" && isset($_GET["month"]) && preg_match("/^\d{4}-\d{2}$/", $_GET["month"])) {
     $selected_month = $_GET["month"];
 }
 
 $month_start = $selected_month . "-01";
 $month_end = date("Y-m-t", strtotime($month_start));
 
-$stmt = mysqli_prepare(
-    $conn,
-    "SELECT COALESCE(SUM(amount), 0)
-     FROM income
-     WHERE user_id = ? AND income_date BETWEEN ? AND ?"
-);
-mysqli_stmt_bind_param($stmt, "iss", $user_id, $month_start, $month_end);
+$stmt = null;
+if ($filter_type === "month") {
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT COALESCE(SUM(amount), 0)
+         FROM income
+         WHERE user_id = ? AND income_date BETWEEN ? AND ?"
+    );
+    mysqli_stmt_bind_param($stmt, "iss", $user_id, $month_start, $month_end);
+} else {
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT COALESCE(SUM(amount), 0)
+         FROM income
+         WHERE user_id = ?"
+    );
+    mysqli_stmt_bind_param($stmt, "i", $user_id);
+}
 mysqli_stmt_execute($stmt);
 mysqli_stmt_bind_result($stmt, $total_income);
 mysqli_stmt_fetch($stmt);
 mysqli_stmt_close($stmt);
 
-$stmt = mysqli_prepare(
-    $conn,
-    "SELECT COALESCE(SUM(amount), 0)
-     FROM expenses
-     WHERE user_id = ? AND expense_date BETWEEN ? AND ?"
-);
-mysqli_stmt_bind_param($stmt, "iss", $user_id, $month_start, $month_end);
+$stmt = null;
+if ($filter_type === "month") {
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT COALESCE(SUM(amount), 0)
+         FROM expenses
+         WHERE user_id = ? AND expense_date BETWEEN ? AND ?"
+    );
+    mysqli_stmt_bind_param($stmt, "iss", $user_id, $month_start, $month_end);
+} else {
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT COALESCE(SUM(amount), 0)
+         FROM expenses
+         WHERE user_id = ?"
+    );
+    mysqli_stmt_bind_param($stmt, "i", $user_id);
+}
 mysqli_stmt_execute($stmt);
 mysqli_stmt_bind_result($stmt, $total_expense);
 mysqli_stmt_fetch($stmt);
@@ -40,15 +63,28 @@ mysqli_stmt_close($stmt);
 $remaining_balance = $total_income - $total_expense;
 
 $category_data = [];
-$stmt = mysqli_prepare(
-    $conn,
-    "SELECT category, SUM(amount) AS total
-     FROM expenses
-     WHERE user_id = ? AND expense_date BETWEEN ? AND ?
-     GROUP BY category
-     ORDER BY total DESC"
-);
-mysqli_stmt_bind_param($stmt, "iss", $user_id, $month_start, $month_end);
+$stmt = null;
+if ($filter_type === "month") {
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT category, SUM(amount) AS total
+         FROM expenses
+         WHERE user_id = ? AND expense_date BETWEEN ? AND ?
+         GROUP BY category
+         ORDER BY total DESC"
+    );
+    mysqli_stmt_bind_param($stmt, "iss", $user_id, $month_start, $month_end);
+} else {
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT category, SUM(amount) AS total
+         FROM expenses
+         WHERE user_id = ?
+         GROUP BY category
+         ORDER BY total DESC"
+    );
+    mysqli_stmt_bind_param($stmt, "i", $user_id);
+}
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 while ($row = mysqli_fetch_assoc($result)) {
@@ -60,7 +96,8 @@ $trend_labels = [];
 $trend_income_map = [];
 $trend_expense_map = [];
 
-$selected_date = DateTime::createFromFormat("Y-m-d", $month_start);
+$trend_base = $filter_type === "month" ? $month_start : date("Y-m-01");
+$selected_date = DateTime::createFromFormat("Y-m-d", $trend_base);
 $trend_start_date = (clone $selected_date)->modify("-5 months")->format("Y-m-01");
 $trend_end_date = (clone $selected_date)->format("Y-m-t");
 
@@ -114,22 +151,43 @@ $budget_rows = [];
 $budget_total = 0.0;
 $budget_spent_total = 0.0;
 
-$stmt = mysqli_prepare(
-    $conn,
-    "SELECT b.category,
-            b.amount AS budget_amount,
-            COALESCE(e.spent, 0) AS spent_amount
-     FROM budgets b
-     LEFT JOIN (
-         SELECT category, SUM(amount) AS spent
-         FROM expenses
-         WHERE user_id = ? AND DATE_FORMAT(expense_date, '%Y-%m') = ?
-         GROUP BY category
-     ) e ON e.category = b.category
-     WHERE b.user_id = ? AND b.month = ?
-     ORDER BY b.category"
-);
-mysqli_stmt_bind_param($stmt, "isis", $user_id, $selected_month, $user_id, $selected_month);
+$stmt = null;
+if ($filter_type === "month") {
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT b.category,
+                b.amount AS budget_amount,
+                COALESCE(e.spent, 0) AS spent_amount
+         FROM budgets b
+         LEFT JOIN (
+             SELECT category, SUM(amount) AS spent
+             FROM expenses
+             WHERE user_id = ? AND DATE_FORMAT(expense_date, '%Y-%m') = ?
+             GROUP BY category
+         ) e ON e.category = b.category
+         WHERE b.user_id = ? AND b.month = ?
+         ORDER BY b.category"
+    );
+    mysqli_stmt_bind_param($stmt, "isis", $user_id, $selected_month, $user_id, $selected_month);
+} else {
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT b.category,
+                SUM(b.amount) AS budget_amount,
+                COALESCE(e.spent, 0) AS spent_amount
+         FROM budgets b
+         LEFT JOIN (
+             SELECT category, SUM(amount) AS spent
+             FROM expenses
+             WHERE user_id = ?
+             GROUP BY category
+         ) e ON e.category = b.category
+         WHERE b.user_id = ?
+         GROUP BY b.category
+         ORDER BY b.category"
+    );
+    mysqli_stmt_bind_param($stmt, "ii", $user_id, $user_id);
+}
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 while ($row = mysqli_fetch_assoc($result)) {
@@ -188,12 +246,27 @@ mysqli_stmt_close($stmt);
 include "includes/header.php";
 ?>
 
-<form method="GET" class="month-filter-form mb-3">
-    <input type="month" name="month" class="form-control" value="<?php echo htmlspecialchars($selected_month); ?>">
-    <button class="btn btn-primary filter-btn" type="submit">Filter</button>
-</form>
+<div class="dashboard-page">
 
-<section class="stats-grid">
+<form method="GET" class="month-filter-form dashboard-filter mb-3">
+    <select name="filter_type" id="dashboardFilterType" class="form-select">
+        <option value="all" <?php echo $filter_type === "all" ? "selected" : ""; ?>>All Time</option>
+        <option value="month" <?php echo $filter_type === "month" ? "selected" : ""; ?>>Specific Month</option>
+    </select>
+    <input type="month" name="month" id="dashboardMonthFilter" class="form-control" value="<?php echo htmlspecialchars($selected_month); ?>">
+    <button class="btn btn-primary filter-btn btn-filter" type="submit">Filter</button>
+</form>
+<script>
+    const dashboardFilterType = document.getElementById("dashboardFilterType");
+    const dashboardMonthFilter = document.getElementById("dashboardMonthFilter");
+    function toggleDashboardMonth() {
+        dashboardMonthFilter.style.display = dashboardFilterType.value === "month" ? "block" : "none";
+    }
+    dashboardFilterType.addEventListener("change", toggleDashboardMonth);
+    toggleDashboardMonth();
+</script>
+
+<section class="stats-grid dashboard-card-grid">
     <article class="stat-card income">
         <div>
             <p class="stat-title">Total Income</p>
@@ -255,7 +328,10 @@ include "includes/header.php";
 <section class="dashboard-card budget-card">
     <div class="card-heading">
         <h5>Budget Overview</h5>
-        <span class="heading-meta">Budget Rs <?php echo number_format($budget_total, 2); ?> | Spent Rs <?php echo number_format($budget_spent_total, 2); ?></span>
+            <span class="heading-meta">
+                <?php echo $filter_type === "month" ? htmlspecialchars($selected_month) . " | " : ""; ?>
+                Budget Rs <?php echo number_format($budget_total, 2); ?> | Spent Rs <?php echo number_format($budget_spent_total, 2); ?>
+            </span>
     </div>
     <div class="budget-list">
         <?php if (empty($budget_rows)): ?>
@@ -320,7 +396,9 @@ include "includes/header.php";
                             <td><?php echo htmlspecialchars($txn["txn_date"]); ?></td>
                             <td><?php echo htmlspecialchars($txn["category"]); ?></td>
                             <td><?php echo htmlspecialchars($txn["notes"] ?: "-"); ?></td>
-                            <td class="text-end fw-semibold">Rs <?php echo number_format((float) $txn["amount"], 2); ?></td>
+                            <td class="amount-column <?php echo $txn["txn_type"] === "Income" ? "amount-income" : "amount-expense"; ?>">
+                                ₹<?php echo number_format((float) $txn["amount"], 2); ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -345,5 +423,7 @@ include "includes/header.php";
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="assets/js/charts.js"></script>
+
+</div>
 
 <?php include "includes/footer.php"; ?>

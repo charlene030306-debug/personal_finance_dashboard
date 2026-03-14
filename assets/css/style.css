@@ -1,0 +1,8 @@
+body {
+    font-family: "Manrope", system-ui, -apple-system, sans-serif;
+}
+
+.form-control:focus,
+.form-select:focus {
+    box-shadow: none;
+}

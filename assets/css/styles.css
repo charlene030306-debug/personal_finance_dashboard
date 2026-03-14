@@ -1,4 +1,12 @@
 :root {
+    /* Shared color system */
+    --primary-color: #3366ff;
+    --income-color: #20b36f;
+    --expense-color: #ef5350;
+    --neutral-color: #5f708f;
+    --card-bg: rgba(255, 255, 255, 0.92);
+    --table-header-bg: #f4f7ff;
+    --border-color: rgba(15, 23, 42, 0.12);
     --space-1: 6px;
     --space-2: 10px;
     --space-3: 14px;
@@ -15,21 +23,21 @@
     --bg-panel: rgba(255, 255, 255, 0.72);
     --bg-panel-strong: rgba(255, 255, 255, 0.9);
     --bg-soft: #f7f9ff;
-    --border-soft: rgba(15, 23, 42, 0.09);
+    --border-soft: var(--border-color);
 
     --text-main: #10203b;
-    --text-muted: #5f708f;
+    --text-muted: var(--neutral-color);
 
-    --income-a: #20b36f;
+    --income-a: var(--income-color);
     --income-b: #119f79;
-    --expense-a: #ef5350;
+    --expense-a: var(--expense-color);
     --expense-b: #e53935;
     --balance-a: #4f8df7;
     --balance-b: #3265ea;
     --budget-a: #27a5b8;
     --budget-b: #3587d9;
 
-    --accent: #3366ff;
+    --accent: var(--primary-color);
     --accent-soft: rgba(51, 102, 255, 0.14);
     --danger-soft: rgba(229, 57, 53, 0.14);
     --success-soft: rgba(16, 185, 129, 0.16);
@@ -213,7 +221,7 @@ h1, h2, h3, h4, h5, h6,
 .app-main .input-group-text {
     border-radius: 12px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(255, 255, 255, 0.92);
+    background: var(--card-bg);
     color: var(--text-main);
     transition: all 0.2s ease;
 }
@@ -253,6 +261,10 @@ h1, h2, h3, h4, h5, h6,
     margin-bottom: var(--space-3);
 }
 
+.reports-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .stat-card {
     border-radius: var(--radius-md);
     color: #fff;
@@ -287,6 +299,11 @@ h1, h2, h3, h4, h5, h6,
     font-weight: 600;
 }
 
+.stat-sub {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.8rem;
+}
+
 .stat-value {
     margin: 0;
     font-size: 1.5rem;
@@ -310,6 +327,27 @@ h1, h2, h3, h4, h5, h6,
     border-radius: var(--radius-lg);
     border: 1px solid rgba(255, 255, 255, 0.72);
     padding: 18px;
+}
+
+/* Reports layout helpers */
+.reports-filter-card .form-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.reports-filter-card .form-control,
+.reports-filter-card .form-select {
+    background: #fff;
+}
+
+.reports-summary .stat-card {
+    min-height: 140px;
+}
+
+.reports-summary .stat-icon {
+    font-size: 2rem;
+    opacity: 0.95;
 }
 
 .dashboard-card:hover,
@@ -342,6 +380,35 @@ h1, h2, h3, h4, h5, h6,
 
 .chart-wrap {
     min-height: 260px;
+}
+
+.chart-wrap canvas {
+    width: 100% !important;
+    max-height: 280px;
+}
+
+/* Reports layout */
+.reports-filter-card {
+    padding-bottom: 14px;
+}
+
+.reports-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-3);
+    align-items: end;
+}
+
+.reports-filter-actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+}
+
+.report-export-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
 }
 
 .empty-state {
@@ -417,15 +484,18 @@ h1, h2, h3, h4, h5, h6,
 
 .finance-table thead th,
 .app-main .table thead th {
-    background: #f4f7ff;
+    background: var(--table-header-bg);
     color: #314264;
     font-weight: 700;
     border-bottom: 1px solid var(--border-soft);
+    white-space: nowrap;
 }
 
 .finance-table tbody td,
 .app-main .table tbody td {
     border-color: rgba(148, 163, 184, 0.2);
+    padding: 12px 14px;
+    vertical-align: middle;
 }
 
 .finance-table tbody tr,
@@ -433,9 +503,26 @@ h1, h2, h3, h4, h5, h6,
     transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
+.finance-table tbody tr:nth-child(even),
+.app-main .table tbody tr:nth-child(even) {
+    background-color: #f9fbff;
+}
+
 .finance-table tbody tr:hover,
 .app-main .table tbody tr:hover {
     background-color: #f8fbff;
+}
+
+.finance-table td.text-end,
+.app-main .table td.text-end,
+.finance-table th.text-end,
+.app-main .table th.text-end {
+    text-align: right;
+}
+
+.table-responsive {
+    border-radius: 14px;
+    overflow: auto;
 }
 
 .badge-type {
@@ -525,6 +612,14 @@ h1, h2, h3, h4, h5, h6,
     .stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .reports-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .reports-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 991px) {
@@ -563,6 +658,15 @@ h1, h2, h3, h4, h5, h6,
     .budget-item-head {
         flex-direction: column;
         gap: 4px;
+    }
+
+    .reports-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .report-export-actions {
+        width: 100%;
+        justify-content: flex-start;
     }
 }
 

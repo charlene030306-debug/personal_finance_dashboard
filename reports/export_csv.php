@@ -1,58 +1,38 @@
 <?php
 require_once "../config/db.php";
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-if (!isset($_SESSION["user_id"])) {
-    header("Location: ../auth/login.php");
-    exit();
-}
+require_once "../includes/auth_check.php";
+require_once __DIR__ . "/report_helpers.php";
 
 $user_id = (int) $_SESSION["user_id"];
-$month = date("Y-m");
-if (isset($_GET["month"]) && preg_match("/^\d{4}-\d{2}$/", $_GET["month"])) {
-    $month = $_GET["month"];
-}
+$filters = report_parse_filters($_GET);
 
-$start = $month . "-01";
-$end = date("Y-m-t", strtotime($start));
+[$union_sql, $union_types, $union_params] = report_build_union_query($filters, $user_id);
 
-header("Content-Type: text/csv");
-header("Content-Disposition: attachment; filename=\"report_" . $month . ".csv\"");
+$report_label = $filters["report_type"] . "_" . $filters["start_date"] . "_to_" . $filters["end_date"];
+header("Content-Type: text/csv; charset=utf-8");
+header("Content-Disposition: attachment; filename=\"report_" . $report_label . ".csv\"");
 
 $output = fopen("php://output", "w");
-fputcsv($output, ["Type", "Date", "Source", "Category", "Notes", "Amount"]);
+fputcsv($output, ["Type", "Date", "Category", "Notes", "Amount"]);
 
-$query = "
-    (SELECT 'Income' AS type, income_date AS txn_date, source, category, notes, amount
-     FROM income
-     WHERE user_id = ? AND income_date BETWEEN ? AND ?)
-    UNION ALL
-    (SELECT 'Expense' AS type, expense_date AS txn_date, '' AS source, category, notes, amount
-     FROM expenses
-     WHERE user_id = ? AND expense_date BETWEEN ? AND ?)
-    ORDER BY txn_date DESC, type ASC
-";
+if ($union_sql !== "") {
+    $stmt = mysqli_prepare($conn, $union_sql);
+    mysqli_stmt_bind_param($stmt, $union_types, ...$union_params);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
 
-$stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, "ississ", $user_id, $start, $end, $user_id, $start, $end);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
-
-while ($row = mysqli_fetch_assoc($result)) {
-    fputcsv($output, [
-        $row["type"],
-        $row["txn_date"],
-        $row["source"],
-        $row["category"],
-        $row["notes"],
-        number_format((float) $row["amount"], 2, ".", ""),
-    ]);
+    while ($row = mysqli_fetch_assoc($result)) {
+        fputcsv($output, [
+            $row["type"],
+            $row["txn_date"],
+            $row["category"],
+            $row["notes"] ?: "-",
+            number_format((float) $row["amount"], 2, ".", ""),
+        ]);
+    }
+    mysqli_stmt_close($stmt);
 }
 
-mysqli_stmt_close($stmt);
 fclose($output);
 exit();
 ?>

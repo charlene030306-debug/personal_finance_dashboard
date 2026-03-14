@@ -22,22 +22,21 @@ $errors = [];
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $amount = (float) ($_POST["amount"] ?? 0);
-    $source = trim($_POST["source"] ?? "");
     $category = trim($_POST["category"] ?? "");
     $income_date = $_POST["income_date"] ?? "";
     $notes = trim($_POST["notes"] ?? "");
 
-    if ($amount <= 0 || $source === "" || $category === "" || $income_date === "") {
-        $errors[] = "Amount, source, category and date are required.";
+    if ($amount <= 0 || $category === "" || $income_date === "") {
+        $errors[] = "Amount, category and date are required.";
     }
 
     if (empty($errors)) {
         $stmt = mysqli_prepare(
             $conn,
-            "INSERT INTO income (user_id, amount, source, category, notes, income_date)
-             VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO income (user_id, amount, category, notes, income_date)
+             VALUES (?, ?, ?, ?, ?)"
         );
-        mysqli_stmt_bind_param($stmt, "idssss", $user_id, $amount, $source, $category, $notes, $income_date);
+        mysqli_stmt_bind_param($stmt, "idsss", $user_id, $amount, $category, $notes, $income_date);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
 
@@ -52,7 +51,7 @@ $month_end = date("Y-m-t", strtotime($month_start));
 
 $stmt = mysqli_prepare(
     $conn,
-    "SELECT id, amount, source, category, notes, income_date
+    "SELECT id, amount, category, notes, income_date
      FROM income
      WHERE user_id = ? AND income_date BETWEEN ? AND ?
      ORDER BY income_date DESC, id DESC"
@@ -90,9 +89,6 @@ include "../includes/header.php";
                     <input type="number" min="0" step="0.01" name="amount" class="form-control" placeholder="Amount" required>
                 </div>
                 <div class="col-md-2">
-                    <input type="text" name="source" class="form-control" placeholder="Source" required>
-                </div>
-                <div class="col-md-2">
                     <select name="category" class="form-select" required>
                         <option value="">Category</option>
                         <?php foreach ($income_categories as $category): ?>
@@ -122,7 +118,6 @@ include "../includes/header.php";
                 <thead class="table-dark">
                     <tr>
                         <th>Date</th>
-                        <th>Source</th>
                         <th>Category</th>
                         <th>Notes</th>
                         <th class="text-end">Amount</th>
@@ -133,7 +128,6 @@ include "../includes/header.php";
                     <?php while ($row = mysqli_fetch_assoc($result)): ?>
                         <tr>
                             <td><?php echo htmlspecialchars($row["income_date"]); ?></td>
-                            <td><?php echo htmlspecialchars($row["source"]); ?></td>
                             <td><?php echo htmlspecialchars($row["category"]); ?></td>
                             <td><?php echo htmlspecialchars($row["notes"] ?: "-"); ?></td>
                             <td class="text-end">Rs <?php echo number_format((float) $row["amount"], 2); ?></td>

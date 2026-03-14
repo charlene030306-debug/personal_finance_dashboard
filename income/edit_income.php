@@ -22,13 +22,13 @@ if ($id <= 0) {
 
 $stmt = mysqli_prepare(
     $conn,
-    "SELECT amount, source, category, notes, income_date
+    "SELECT amount, category, notes, income_date
      FROM income
      WHERE id = ? AND user_id = ?"
 );
 mysqli_stmt_bind_param($stmt, "ii", $id, $user_id);
 mysqli_stmt_execute($stmt);
-mysqli_stmt_bind_result($stmt, $amount, $source, $category, $notes, $income_date);
+mysqli_stmt_bind_result($stmt, $amount, $category, $notes, $income_date);
 $found = mysqli_stmt_fetch($stmt);
 mysqli_stmt_close($stmt);
 
@@ -41,23 +41,22 @@ $errors = [];
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $amount = (float) ($_POST["amount"] ?? 0);
-    $source = trim($_POST["source"] ?? "");
     $category = trim($_POST["category"] ?? "");
     $notes = trim($_POST["notes"] ?? "");
     $income_date = $_POST["income_date"] ?? "";
 
-    if ($amount <= 0 || $source === "" || $category === "" || $income_date === "") {
-        $errors[] = "Amount, source, category and date are required.";
+    if ($amount <= 0 || $category === "" || $income_date === "") {
+        $errors[] = "Amount, category and date are required.";
     }
 
     if (empty($errors)) {
         $stmt = mysqli_prepare(
             $conn,
             "UPDATE income
-             SET amount = ?, source = ?, category = ?, notes = ?, income_date = ?
+             SET amount = ?, category = ?, notes = ?, income_date = ?
              WHERE id = ? AND user_id = ?"
         );
-        mysqli_stmt_bind_param($stmt, "dssssii", $amount, $source, $category, $notes, $income_date, $id, $user_id);
+        mysqli_stmt_bind_param($stmt, "dsssii", $amount, $category, $notes, $income_date, $id, $user_id);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
 
@@ -82,11 +81,6 @@ include "../includes/header.php";
             <div class="mb-3">
                 <label class="form-label">Amount</label>
                 <input type="number" min="0" step="0.01" name="amount" class="form-control" value="<?php echo htmlspecialchars((string) $amount); ?>" required>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Source</label>
-                <input type="text" name="source" class="form-control" value="<?php echo htmlspecialchars($source); ?>" required>
             </div>
 
             <div class="mb-3">

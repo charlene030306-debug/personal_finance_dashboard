@@ -160,7 +160,6 @@ $stmt = mysqli_prepare(
     "(SELECT 'Income' AS txn_type,
              id,
              income_date AS txn_date,
-             source,
              category,
              amount,
              notes
@@ -170,7 +169,6 @@ $stmt = mysqli_prepare(
      (SELECT 'Expense' AS txn_type,
              id,
              expense_date AS txn_date,
-             '' AS source,
              category,
              amount,
              notes
@@ -301,7 +299,6 @@ include "includes/header.php";
                 <tr>
                     <th>Type</th>
                     <th>Date</th>
-                    <th>Source</th>
                     <th>Category</th>
                     <th>Notes</th>
                     <th class="text-end">Amount</th>
@@ -310,7 +307,7 @@ include "includes/header.php";
             <tbody>
                 <?php if (empty($recent_transactions)): ?>
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">No transactions yet.</td>
+                        <td colspan="5" class="text-center text-muted py-4">No transactions yet.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($recent_transactions as $txn): ?>
@@ -321,7 +318,6 @@ include "includes/header.php";
                                 </span>
                             </td>
                             <td><?php echo htmlspecialchars($txn["txn_date"]); ?></td>
-                            <td><?php echo htmlspecialchars($txn["source"] ?: "-"); ?></td>
                             <td><?php echo htmlspecialchars($txn["category"]); ?></td>
                             <td><?php echo htmlspecialchars($txn["notes"] ?: "-"); ?></td>
                             <td class="text-end fw-semibold">Rs <?php echo number_format((float) $txn["amount"], 2); ?></td>

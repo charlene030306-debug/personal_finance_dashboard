@@ -146,11 +146,6 @@ include "../includes/header.php";
     <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
 <?php endif; ?>
 
-<form method="GET" class="month-filter-form mb-3">
-    <input type="month" name="month" class="form-control" value="<?php echo htmlspecialchars($selected_month); ?>">
-    <button class="btn btn-primary filter-btn" type="submit">Filter</button>
-</form>
-
 <section class="stats-grid">
     <article class="stat-card budget">
         <div>
@@ -181,6 +176,11 @@ include "../includes/header.php";
         <span class="stat-icon"><i class="fa-solid fa-chart-pie"></i></span>
     </article>
 </section>
+
+<form method="GET" class="month-filter-form mb-3">
+    <input type="month" name="month" class="form-control" value="<?php echo htmlspecialchars($selected_month); ?>">
+    <button class="btn btn-primary filter-btn" type="submit">Filter</button>
+</form>
 
 <section class="dashboard-card mb-3">
     <div class="card-heading">
